@@ -1,0 +1,88 @@
+#include "Volume.h" // Lisää ohjelmaan Volume-kirjaston
+
+//Äänenkorkeutta säätävän anturin pinit
+const int trigPin = 9;
+const int echoPin = 10;
+
+
+//Äänenvoimakkuutta säätävän anturin pinit
+const int trig2Pin = 6;
+const int echo2Pin = 11;
+
+
+//Kaiuttimen pin, Volume-kirjaston versio tone()-funktiosta käyttää Arduino-mallille vakiopiniä, Arduino Uno:lle se on 5
+const int speakerPin = 5;
+
+//Muuttujat anturien paluuarvoille sekä ääntä säätäville arvoille
+float duration, duration_2, frequency, volume;
+
+//Volume-kirjaston olion alustaminen
+Volume vol;
+
+
+void setup() {
+  //äänenkorkeusanturin alustus
+  pinMode(trigPin, OUTPUT);
+  pinMode(echoPin, INPUT);
+
+  //äänenvoimakkuusanturin alustus
+  pinMode(trig2Pin, OUTPUT);
+  pinMode(echo2Pin, INPUT);
+
+  //Asettaa serial monitoria varten tarvittavan tiedonsiirron bittinopeuden
+  Serial.begin(9600);
+
+  //vol-eilön käynnistäminen
+  vol.begin();
+}
+
+void loop() {
+  //Äänenkorkeutta säätävän ultraäänietäisyysanturin pulssi
+  digitalWrite(trigPin, LOW);
+  delayMicroseconds(2);
+  digitalWrite(trigPin, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(trigPin, LOW);
+  
+  //muuttuja anturin paluuarvolle, eli kuinka pitkään ultraäänipulssilla kestää liikkua anturista käteen ja siitä takaisin millisekunneissa
+  duration = pulseIn(echoPin, HIGH);
+  
+  //Äänenvoimakkuutta säätävän ultraäänietäisyysanturin pulssi
+  digitalWrite(trig2Pin, LOW);
+  delayMicroseconds(2);
+  digitalWrite(trig2Pin, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(trig2Pin, LOW);
+
+  //muuttuja anturin paluuarvolle
+  duration_2 = pulseIn(echo2Pin, HIGH);
+
+  //Etäisyysanturien paluuarvojen tulostus Serial Monitoriin testausta varten
+  /*
+  Serial.print("Duration: ");
+  Serial.println(duration);
+  Serial.print("Duration 2: ");
+  Serial.println(duration_2);
+  */
+
+  //Asettaa äänenkorkeudelle arvot etäisyyssensorin paluuarvojen perusteella, millisekunneista herzeiksi
+  frequency = 1 / (duration / 500000);
+  //Tekee äänenkorkeuden muutoksen herkemmäksi, joten kättä ei tarvitse liikuttaa yhtä paljon nuottien välillä
+  frequency = map(frequency, 2500, 300, 2500, 200);
+  //Asettaa äänenkorkeudelle minimi -ja maksimiarvot
+  frequency = constrain(frequency, 20, 8000);
+  
+  //Äänenvoimakkuudelle arvot etäisyyssensorin arvojen perusteella
+  volume = map(duration_2, 0, 1000, 0, 255);
+  //Rajoittaa arvot 0 ja 255 välille
+  volume = constrain(volume, 0, 255);
+  //Mykistää soittimen, jos sensorin läheisyydessä ei ole kättä
+  if (duration_2 >= 2200) {
+    volume = 0;
+    frequency = 0;
+  }
+
+
+  //Volume-kirjaston versio tone()-funktiosta, jolla on mahdollista säätää sekä äänenkorkeutta että -voimakkuutta
+  vol.tone(frequency, volume);
+}
